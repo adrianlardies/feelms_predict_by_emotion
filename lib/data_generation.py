@@ -18,10 +18,25 @@ def classify_users(df_users):
     less_active_users = df_users[~df_users['user_id'].isin(active_users)].user_id.tolist()  # 80% less active users
     return active_users, less_active_users
 
-# Function to generate interactions based on active and less active users
+# Function to generate interactions with weighted emotion selection
 def generate_interactions(num_interactions, df_movies, df_users, active_users, less_active_users, emotions):
     interactions = []
     interaction_history = {}
+
+    # Define weights for the emotions (higher weight = more frequent)
+    emotion_weights = {
+        'Happy': 15,     # more frequent
+        'Excited': 12,   # more frequent
+        'Relaxed': 10,   
+        'Sweet': 9,      
+        'Inspired': 7,   
+        'Down': 6,       # less frequent
+        'Scared': 5      # less frequent
+    }
+
+    # Generate a list of emotions based on their weights
+    weighted_emotions = list(emotion_weights.keys())
+    weights = list(emotion_weights.values())
 
     # Proportion: 1 out of 6 interactions will be 'view', the rest 'shown'
     view_ratio = 1 / 6
@@ -34,8 +49,8 @@ def generate_interactions(num_interactions, df_movies, df_users, active_users, l
         else:
             user_id = random.choice(less_active_users)
 
-        # Select a random emotion
-        emotion = random.choice(emotions)
+        # Select a weighted random emotion
+        emotion = random.choices(weighted_emotions, weights=weights, k=1)[0]
 
         # Filter movies based on the selected emotion
         filtered_movies = df_movies[df_movies['emotions'].apply(lambda x: emotion in x)]
@@ -96,28 +111,49 @@ def generate_favorites(df_interactions):
 
     return pd.DataFrame(favorites, columns=['user_id', 'movie_id', 'date_added'])
 
-# Function to generate ratings based on 50% of the favorites
-def generate_ratings(df_favorites):
+# Function to generate ratings based on 50% of the favorites (influenced by emotion without merge)
+def generate_ratings(df_favorites, df_interactions):
     ratings = []
+
+    # Define stronger emotion-based rating weights
+    emotion_rating_weights = {
+        'Happy': [1, 1, 1, 1, 1, 2, 3, 5, 7, 10],     # Much higher chance of high ratings
+        'Excited': [1, 1, 1, 2, 3, 3, 5, 6, 8, 10],
+        'Relaxed': [1, 2, 2, 3, 3, 4, 5, 6, 7, 9], 
+        'Sweet': [1, 1, 2, 2, 3, 4, 5, 6, 8, 10],
+        'Inspired': [1, 2, 2, 3, 3, 5, 6, 7, 8, 9],
+        'Down': [1, 2, 3, 3, 4, 5, 5, 6, 7, 7],     # Balanced, but slightly lower ratings
+        'Scared': [1, 1, 2, 3, 3, 4, 5, 6, 7, 7]    # Tendency towards mid to lower ratings
+    }
 
     # Select 50% of the favorite movies to be rated
     num_ratings = int(len(df_favorites) * 0.5)
 
+    # Loop through the sample of favorite movies
     for _, selected_favorite in df_favorites.sample(num_ratings).iterrows():
         user_id = selected_favorite['user_id']
         movie_id = selected_favorite['movie_id']
         favorite_date = selected_favorite['date_added']
 
+        # Get the emotion from df_interactions for the same movie_id
+        # We assume that there is at least one interaction with this movie and get its emotion
+        emotion = df_interactions[df_interactions['movie_id'] == movie_id]['emotion'].values[0]
+
         # Ensure the rating date is after or equal to the favorite date
         days_after = random.randint(0, (datetime.datetime.now() - favorite_date).days)
         date_rated = favorite_date + datetime.timedelta(days=days_after)
 
-        # Assign a rating between 1 and 10, with a bias towards higher ratings
-        rating = random.choices(range(1, 11), weights=[1, 1, 2, 2, 3, 3, 4, 4, 5, 5], k=1)[0]
+        # Use emotion-based weights to assign ratings
+        rating = random.choices(range(1, 11), weights=emotion_rating_weights.get(emotion, [1, 1, 1, 2, 3, 3, 4, 5, 6, 7]), k=1)[0]
 
         ratings.append([user_id, movie_id, rating, date_rated])
 
     return pd.DataFrame(ratings, columns=['user_id', 'movie_id', 'rating', 'date'])
+
+# Function to ensure that df_movies has a 'movie_id' column
+def add_movie_id(df_movies):
+    df_movies['movie_id'] = df_movies.index + 1  # Add 1 to ensure index starts from 1
+    return df_movies
 
 # Function to insert data into MySQL
 def insert_users(df_users, conn, cursor):
