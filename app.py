@@ -40,7 +40,7 @@ conn = mysql.connector.connect(
     user=db_user,
     password=db_password,
     database=db_name,
-    port=int(db_port),
+    port=3306,
     auth_plugin='caching_sha2_password'
 )
 c = conn.cursor()
