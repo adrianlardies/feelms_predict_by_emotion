@@ -7,7 +7,6 @@ from surprise import SVD, Dataset, Reader
 from surprise.model_selection import cross_validate
 from sklearn.impute import SimpleImputer
 
-
 # 1. Preprocess the data: Merge, scale, and normalize
 def preprocess_data(df_interactions, df_ratings, df_favorites, df_movies):
     # Merge interactions with movie data
@@ -30,7 +29,6 @@ def preprocess_data(df_interactions, df_ratings, df_favorites, df_movies):
     
     return df_merged
 
-
 # 2. Train SVD collaborative filtering model with manual hyperparameter adjustment
 def train_svd_model(df_user_movie):
     # Prepare the data for Surprise's SVD
@@ -45,7 +43,6 @@ def train_svd_model(df_user_movie):
     results = cross_validate(svd_model, data, measures=['RMSE', 'MAE'], cv=5, verbose=True)
     
     return svd_model, results
-
 
 # 3. Train RandomForest for classification with custom hyperparameters
 def train_random_forest(df_user_movie):
@@ -74,7 +71,6 @@ def train_random_forest(df_user_movie):
     
     return rf, accuracy, precision, recall, f1, X_test, y_test  # Return X_test, y_test for later use
 
-
 # 4. Evaluate classification model (e.g., RandomForest) and return the evaluation metrics
 def evaluate_classification_model(y_test, y_pred):
     accuracy = accuracy_score(y_test, y_pred)
@@ -82,7 +78,6 @@ def evaluate_classification_model(y_test, y_pred):
     recall = recall_score(y_test, y_pred)
     f1 = f1_score(y_test, y_pred)
     return accuracy, precision, recall, f1
-
 
 # 5. Confusion matrix for classification
 def evaluate_classification(y_test, y_pred):

@@ -3,104 +3,149 @@ import streamlit as st
 import pandas as pd
 import datetime
 import random
+import pickle
+import os
+from dotenv import load_dotenv
 
-# Conectar a la base de datos MySQL
+# Load environment variables from .env file
+load_dotenv()
+
+# Get database credentials from environment variables
+db_host = os.getenv('DB_HOST')
+db_user = os.getenv('DB_USER')
+db_password = os.getenv('DB_PASSWORD')
+db_name = os.getenv('DB_NAME')
+db_port = os.getenv('DB_PORT')
+
+# Connect to MySQL database using the loaded environment variables
 conn = mysql.connector.connect(
-    host="localhost",  
-    user="root",  
-    password="123456",  
-    database="movie_recommendations"
+    host=db_host,
+    user=db_user,
+    password=db_password,
+    database=db_name,
+    port=db_port
 )
 c = conn.cursor()
 
-# Función para verificar si el usuario existe o crear uno nuevo
-def obtener_o_crear_usuario(username, password):
+# Connect to MySQL database
+# conn = mysql.connector.connect(
+#    host="localhost",  
+#    user="root",  
+#    password="123456",  
+#    database="movie_recommendations"
+#)
+#c = conn.cursor()
+
+# Load pre-trained models from pickle files
+with open('model/svd_model.pkl', 'rb') as file:
+    svd_model = pickle.load(file)
+
+with open('model/rf_model.pkl', 'rb') as file:
+    rf_model = pickle.load(file)
+
+# Function to predict movie rating using the SVD model
+def predict_rating(user_id, movie_id):
+    # Generate the prediction using the SVD model
+    try:
+        pred = svd_model.predict(user_id, movie_id)
+        return pred.est  # Return the predicted rating
+    except:
+        return 5  # Default value if no prediction is available
+
+# Function to predict if a movie will be marked as favorite using RandomForest
+def predict_favorite(features):
+    # Use the RandomForest model to predict whether the movie will be marked as favorite
+    prediction = rf_model.predict([features])
+    return prediction[0]
+
+# Function to check if the user exists or create a new one
+def get_or_create_user(username, password):
     query = "SELECT user_id FROM users WHERE username = %s"
     c.execute(query, (username,))
     result = c.fetchone()
 
     if not result:
-        # Si el usuario no existe, lo creamos con una contraseña
+        # If the user doesn't exist, create a new one with the provided password
         query = "INSERT INTO users (username, password) VALUES (%s, %s)"
         c.execute(query, (username, password))
         conn.commit()
         st.success(f"User {username} has been created.")
-        return c.lastrowid  # Devolver el ID del nuevo usuario (user_id)
+        return c.lastrowid  # Return the new user's ID (user_id)
     else:
-        # El usuario existe, validar contraseña
+        # If the user exists, validate the password
         query = "SELECT user_id FROM users WHERE username = %s AND password = %s"
         c.execute(query, (username, password))
         result = c.fetchone()
         if result:
             st.success(f"Welcome back, {username}!")
-            return result[0]  # Devolver el ID del usuario existente (user_id)
+            return result[0]  # Return the existing user's ID (user_id)
         else:
             st.error("Incorrect password. Please try again.")
             return None
 
-# Función para manejar el estado de sesión del usuario
-def iniciar_sesion(username, password):
-    user_id = obtener_o_crear_usuario(username, password)
+# Function to handle user session state
+def login(username, password):
+    user_id = get_or_create_user(username, password)
     if user_id:
         st.session_state['user_id'] = user_id
         st.session_state['username'] = username
         st.session_state['logged_in'] = True
         st.rerun()
 
-# Función para cerrar sesión
-def cerrar_sesion():
-    st.session_state.clear()  # Limpiar toda la sesión
+# Function to log out
+def logout():
+    st.session_state.clear()  # Clear the entire session
     st.success("You have successfully logged out.")
     st.rerun()
 
-# Inicializar el estado de sesión
+# Initialize session state
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['user_id'] = None
     st.session_state['username'] = None
 
-# Si el usuario no está logueado, mostramos el formulario de login/registro
+# If the user is not logged in, show the login/registration form
 if not st.session_state['logged_in']:
     st.title("Movie Recommendation Based on Your Emotion")
 
-    # Pedir el username
+    # Request the username
     username = st.text_input("Username")
 
-    # Pedir la contraseña
+    # Request the password
     password = st.text_input("Password", type="password")
 
-    # Botón para iniciar sesión o registrarse
+    # Button to log in or register
     if st.button("Login / Register"):
         if username and password:
-            iniciar_sesion(username, password)
+            login(username, password)
 else:
     st.write(f"Welcome, {st.session_state['username']}!")
 
-    # Botón para cerrar sesión
+    # Logout button
     if st.button("Logout"):
-        cerrar_sesion()
+        logout()
 
-    # Guardar interacciones en la base de datos usando el índice del DataFrame como movie_id
-    def guardar_interaccion(user_id, movie_id, emotion, interaction_type):
+    # Save interactions in the database using the DataFrame index as movie_id
+    def save_interaction(user_id, movie_id, emotion, interaction_type):
         query = "INSERT INTO interactions (user_id, movie_id, emotion, interaction_type, date) VALUES (%s, %s, %s, %s, %s)"
         values = (user_id, movie_id, emotion, interaction_type, datetime.datetime.now())
         c.execute(query, values)
         conn.commit()
 
-    # Verificar si la película ya ha sido mostrada en la sesión actual
-    def verificar_interaccion_sesion(movie_id):
-        if 'peliculas_mostradas' not in st.session_state:
-            st.session_state['peliculas_mostradas'] = set()  # Usamos un conjunto para evitar duplicados en la sesión
+    # Check if the movie has already been shown in the current session
+    def check_session_interaction(movie_id):
+        if 'shown_movies' not in st.session_state:
+            st.session_state['shown_movies'] = set()  # Use a set to avoid duplicates in the session
         
-        # Comprobar si la película ya fue mostrada en esta sesión
-        return movie_id in st.session_state['peliculas_mostradas']
+        # Check if the movie has already been shown in this session
+        return movie_id in st.session_state['shown_movies']
     
-    # Registrar la película como mostrada en la sesión actual
-    def registrar_interaccion_sesion(movie_id):        
-        st.session_state['peliculas_mostradas'].add(movie_id)
+    # Register the movie as shown in the current session
+    def register_session_interaction(movie_id):        
+        st.session_state['shown_movies'].add(movie_id)
 
-    # Función para actualizar una interacción existente en la base de datos
-    def actualizar_interaccion(user_id, movie_id, interaction_type):
+    # Function to update an existing interaction in the database
+    def update_interaction(user_id, movie_id, interaction_type):
         query = """
         UPDATE interactions 
         SET interaction_type = %s, date = %s 
@@ -110,8 +155,8 @@ else:
         c.execute(query, values)
         conn.commit()
 
-    # Función para guardar favoritos
-    def guardar_favorito(user_id, movie_id):
+    # Function to save favorites
+    def save_favorite(user_id, movie_id):
         query = "SELECT * FROM favorites WHERE user_id = %s AND movie_id = %s"
         c.execute(query, (user_id, movie_id))
         if c.fetchone():
@@ -123,97 +168,99 @@ else:
             conn.commit()
             st.success("Added to favorites!")
 
-    # Función para eliminar calificaciones al eliminar favoritos
-    def eliminar_calificacion(user_id, movie_id):
+    # Function to delete ratings when removing favorites
+    def delete_rating(user_id, movie_id):
         query = "DELETE FROM ratings WHERE user_id = %s AND movie_id = %s"
         c.execute(query, (user_id, movie_id))
         conn.commit()
 
-    # Función para eliminar favoritos
-    def eliminar_favorito(user_id, movie_id):
-        # Eliminar calificación asociada
-        eliminar_calificacion(user_id, movie_id)
-        # Eliminar favorito
+    # Function to remove favorites
+    def remove_favorite(user_id, movie_id):
+        # Remove associated rating
+        delete_rating(user_id, movie_id)
+        # Remove favorite
         query = "DELETE FROM favorites WHERE user_id = %s AND movie_id = %s"
         c.execute(query, (user_id, movie_id))
         conn.commit()
         st.success("Removed from favorites!")
-        st.session_state['favoritos_actualizados'] = True
+        st.session_state['favorites_updated'] = True
 
-    # Función para guardar o actualizar calificaciones de las películas
-    def guardar_calificacion(user_id, movie_id, rating):
+    # Function to save or update movie ratings
+    def save_rating(user_id, movie_id, rating):
         query = "SELECT rating_id FROM ratings WHERE user_id = %s AND movie_id = %s"
         c.execute(query, (user_id, movie_id))
         result = c.fetchone()
 
         if result:
-            # Si ya existe, actualizamos la calificación
+            # If it exists, update the rating
             query = "UPDATE ratings SET rating = %s, date = %s WHERE user_id = %s AND movie_id = %s"
             values = (rating, datetime.datetime.now(), user_id, movie_id)
         else:
-            # Si no existe, insertamos una nueva calificación
+            # If it doesn't exist, insert a new rating
             query = "INSERT INTO ratings (user_id, movie_id, rating, date) VALUES (%s, %s, %s, %s)"
             values = (user_id, movie_id, rating, datetime.datetime.now())
 
         c.execute(query, values)
         conn.commit()
 
-    # Función para obtener la calificación previa (si existe)
-    def obtener_calificacion(user_id, movie_id):
+    # Function to get the previous rating (if exists)
+    def get_rating(user_id, movie_id):
         query = "SELECT rating FROM ratings WHERE user_id = %s AND movie_id = %s"
         c.execute(query, (user_id, movie_id))
         result = c.fetchone()
         if result:
-            return result[0]  # Devolver la calificación existente
+            return result[0]  # Return the existing rating
         else:
-            return None  # Si no hay calificación previa, devolver None
+            return None  # If no previous rating, return None
 
-    # Mostrar el historial de favoritos
-    def mostrar_favoritos(user_id):
+    # Show the favorite movies history
+    def show_favorites(user_id):
         st.subheader(f"Your Favorite Movies")
         query = "SELECT movie_id FROM favorites WHERE user_id = %s"
         c.execute(query, (user_id,))
-        favoritos = c.fetchall()
+        favorites = c.fetchall()
 
-        if favoritos:
-            # Agrupar favoritos en filas de 3 columnas
-            for i in range(0, len(favoritos), 3):
-                cols_favoritos = st.columns(3)
+        if favorites:
+            # Group favorites in rows of 3 columns
+            for i in range(0, len(favorites), 3):
+                cols_favorites = st.columns(3)
                 
-                for col, fav in zip(cols_favoritos, favoritos[i:i+3]):
-                    pelicula = df.loc[df.index == fav[0]].iloc[0]
-                    titulo_corto = pelicula['title'] if len(pelicula['title']) <= 20 else pelicula['title'][:20] + '...'
+                for col, fav in zip(cols_favorites, favorites[i:i+3]):
+                    movie = df.loc[df.index == fav[0]].iloc[0]
+                    short_title = movie['title'] if len(movie['title']) <= 20 else movie['title'][:20] + '...'
                     with col:
-                        st.image(pelicula['poster'], width=150)
-                        st.write(f"**{titulo_corto}** ({pelicula['year']})")
-                        st.write(f"Duration: {pelicula['duration']} min")
+                        st.image(movie['poster'], width=150)
+                        st.write(f"**{short_title}** ({movie['year']})")
+                        st.write(f"Duration: {movie['duration']} min")
 
-                        # Mostrar el slider de calificación solo en favoritos
-                        calificacion_previa = obtener_calificacion(user_id, fav[0])
-                        if calificacion_previa is None:
+                        # Show rating slider only in favorites
+                        previous_rating = get_rating(user_id, fav[0])
+                        if previous_rating is None:
                             rating = st.slider(f"Rate", 1, 10, step=1, key=f"rate_fav_{fav[0]}")
                             if st.button(f"Submit Rating", key=f"submit_rating_fav_{fav[0]}"):
-                                guardar_calificacion(user_id, fav[0], rating)
+                                save_rating(user_id, fav[0], rating)
                         else:
-                            st.write(f"Your rating for this movie: {calificacion_previa}")
-                            rating = st.slider(f"Update rating", 1, 10, step=1, value=calificacion_previa, key=f"update_rating_fav_{fav[0]}")
-                            if rating != calificacion_previa:
-                                guardar_calificacion(user_id, fav[0], rating)
+                            st.write(f"Your rating for this movie: {previous_rating}")
+                            rating = st.slider(f"Update rating", 1, 10, step=1, value=previous_rating, key=f"update_rating_fav_{fav[0]}")
+                            if rating != previous_rating:
+                                save_rating(user_id, fav[0], rating)
 
-                        # Botón para eliminar de favoritos y eliminar la calificación
+                        # Button to remove from favorites and delete rating
                         if st.button(f"❌ Remove favorite", key=f"remove_fav_{fav[0]}"):
-                            eliminar_favorito(user_id, fav[0])
+                            remove_favorite(user_id, fav[0])
 
-                # Añadir una línea continua solo si no es el último grupo
-                if i + 3 < len(favoritos):
+                # Add a continuous line only if it's not the last group
+                if i + 3 < len(favorites):
                     st.markdown("<hr>", unsafe_allow_html=True)
         else:
             st.write("No favorites found.")
 
-    # Cargar el dataset de películas (ajusta la ruta a tu dataset si es necesario)
-    df = pd.read_csv('imdb_clean.csv')
+    # Load the movie dataset (adjust the path to your dataset if necessary)
+    df = pd.read_csv('data/imdb_clean.csv')
 
-    # Diccionario de emociones con emoticonos
+    df['movie_id'] = df.index
+
+    # Dictionary of emotions with emojis
     emotions_dict = {
         "Happy": "😊",
         "Down": "😢",
@@ -227,83 +274,91 @@ else:
     st.subheader("How are you feeling today?")
     selected_emotion = None
 
-    # Mostrar emociones usando botones de Streamlit
+    # Display emotions using Streamlit buttons
     cols = st.columns(len(emotions_dict))
 
     for index, (emotion, emoji) in enumerate(emotions_dict.items()):
         with cols[index]:
-            # Usamos st.button para funcionalidad interactiva
+            # Use st.button for interactive functionality
             if st.button(f"{emoji}\n{emotion}", key=f"emotion_{index}", use_container_width=True):
                 selected_emotion = emotion
 
-    # Guardar la emoción seleccionada en st.session_state para que no se pierda
+    # Save the selected emotion in st.session_state so it doesn't get lost
     if selected_emotion:
         st.session_state['selected_emotion'] = selected_emotion
-        st.session_state['peliculas_mostradas'] = []  # Reiniciar las películas mostradas al cambiar de emoción
+        st.session_state['shown_movies'] = set()  # Reset shown movies when the emotion changes
 
-    # Si ya hay una emoción seleccionada en session_state, usarla
+    # If there's already a selected emotion in session_state, use it
     if 'selected_emotion' in st.session_state:
         selected_emotion = st.session_state['selected_emotion']
 
-    # Mostrar la emoción seleccionada y las recomendaciones SOLO si hay una emoción seleccionada
+    # Display the selected emotion and recommendations ONLY if there's a selected emotion
     if selected_emotion:
         st.write(f"You selected: {emotions_dict[selected_emotion]} {selected_emotion}")
 
-        # Filtrar las películas según la emoción seleccionada
-        peliculas_filtradas = df[df['emotions'].apply(lambda x: selected_emotion in x)]
+        # Filter movies based on the selected emotion
+        filtered_movies = df[df['emotions'].apply(lambda x: selected_emotion in x)]
 
-        # Limitar el número de películas a mostrar (entre 6 y 12, con valor por defecto de 6)
-        num_peliculas_a_mostrar = st.slider("Number of movies to display", min_value=6, max_value=12, value=6)
+        # Add predicted ratings for each filtered movie
+        filtered_movies['predicted_rating'] = filtered_movies['movie_id'].apply(lambda x: predict_rating(st.session_state['user_id'], x))
 
-        # Inicializar la lista de películas mostradas si no existe en la sesión
-        if 'peliculas_mostradas' not in st.session_state or not st.session_state['peliculas_mostradas']:
-            # Seleccionamos aleatoriamente las primeras películas
-            peliculas_iniciales = peliculas_filtradas.sample(n=num_peliculas_a_mostrar).index.tolist()
-            st.session_state['peliculas_mostradas'] = peliculas_iniciales
+        # Sort movies by predicted rating
+        filtered_movies = filtered_movies.sort_values(by='predicted_rating', ascending=False)
+
+        # Limit the number of movies to display (between 6 and 12, with a default value of 6)
+        num_movies_to_display = st.slider("Number of movies to display", min_value=6, max_value=12, value=6)
+
+        # Initialize the list of shown movies if it doesn't exist in the session
+        if 'shown_movies' not in st.session_state or not st.session_state['shown_movies']:
+            # Randomly select the first movies
+            initial_movies = filtered_movies.sample(n=num_movies_to_display).index.tolist()
+            st.session_state['shown_movies'] = initial_movies
         else:
-            # Si el usuario aumenta el número de películas a mostrar, agregamos nuevas películas
-            if len(st.session_state['peliculas_mostradas']) < num_peliculas_a_mostrar:
-                # Obtener películas adicionales sin repetir las ya mostradas
-                nuevas_peliculas = peliculas_filtradas[~peliculas_filtradas.index.isin(st.session_state['peliculas_mostradas'])].sample(n=num_peliculas_a_mostrar - len(st.session_state['peliculas_mostradas'])).index.tolist()
-                st.session_state['peliculas_mostradas'].extend(nuevas_peliculas)
+            # If the user increases the number of movies to display, add new movies
+            if len(st.session_state['shown_movies']) < num_movies_to_display:
+                # Get additional movies without repeating those already shown
+                new_movies = filtered_movies[~filtered_movies.index.isin(st.session_state['shown_movies'])].sample(n=num_movies_to_display - len(st.session_state['shown_movies'])).index.tolist()
+                st.session_state['shown_movies'].extend(new_movies)
 
-        # Obtener las películas mostradas basadas en los índices almacenados
-        peliculas_mostradas = peliculas_filtradas.loc[st.session_state['peliculas_mostradas']]
+        # Get the shown movies based on the stored indices
+        shown_movies = filtered_movies.loc[st.session_state['shown_movies']]
 
-        # Mostrar las películas en formato grid (en 3 columnas)
-        for i in range(0, len(peliculas_mostradas), 3):
+        # Display the movies in a grid format (3 columns)
+        for i in range(0, len(shown_movies), 3):
             cols_movies = st.columns(3)
 
-            # Iterar sobre cada grupo de 3 películas
-            for col, (index, pelicula) in zip(cols_movies, peliculas_mostradas.iloc[i:i+3].iterrows()):
+            # Iterate over each group of 3 movies
+            for col, (index, movie) in zip(cols_movies, shown_movies.iloc[i:i+3].iterrows()):
                 with col:
-                    titulo_corto = pelicula['title'] if len(pelicula['title']) <= 20 else pelicula['title'][:20] + '...'
+                    short_title = movie['title'] if len(movie['title']) <= 20 else movie['title'][:20] + '...'
 
-                    st.image(pelicula['poster'], width=150)
-                    st.write(f"**{titulo_corto}** ({pelicula['year']})")
-                    st.write(f"Duration: {pelicula['duration']} min")
-                    st.write(f"Rating: {pelicula['rating']}")
+                    st.image(movie['poster'], width=150)
+                    st.write(f"**{short_title}** ({movie['year']})")
+                    st.write(f"Duration: {movie['duration']} min")
+                    st.write(f"Rating: {movie['rating']}")
 
-                    # Registrar "shown" solo si la película no ha sido mostrada en esta sesión
-                    if not verificar_interaccion_sesion(index):
-                        guardar_interaccion(st.session_state['user_id'], index, selected_emotion, "shown")
-                        registrar_interaccion_sesion(index)
+                    is_favorite_pred = predict_favorite([movie['duration'], movie['rating']])
 
-                    # Expandir descripción sin el botón de "Show more details"
+                    # Register "shown" only if the movie hasn't been shown in this session
+                    if not check_session_interaction(index):
+                        save_interaction(st.session_state['user_id'], index, selected_emotion, "shown")
+                        register_session_interaction(index)
+
+                    # Expand description without the "Show more details" button
                     with st.expander("Description", expanded=False):
-                        st.write(f"{pelicula['description']}")
+                        st.write(f"{movie['description']}")
 
-                    # Botón "Ver Película"
+                    # "Watch" button
                     if st.button(f"🎬 Watch", key=f"watch_{index}"):
-                        actualizar_interaccion(st.session_state['user_id'], index, "view")
+                        update_interaction(st.session_state['user_id'], index, "view")
 
-                    # Botón para añadir a favoritos
+                    # Button to add to favorites
                     if st.button(f"❤️ Add to favorites", key=f"fav_{index}"):
-                        guardar_favorito(st.session_state['user_id'], index)
+                        save_favorite(st.session_state['user_id'], index)
 
             st.markdown("<hr>", unsafe_allow_html=True)
 
         st.write("")
 
-    # Mostrar el historial de favoritos
-    mostrar_favoritos(st.session_state['user_id'])
+    # Show the favorites history
+    show_favorites(st.session_state['user_id'])
