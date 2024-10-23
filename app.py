@@ -7,6 +7,13 @@ import pickle
 import os
 from dotenv import load_dotenv
 
+st.set_page_config(
+    page_title="Feelms - Predicting by Emotion",
+    page_icon="🎬",  # Puedes cambiar el icono
+    layout="centered",  # 'centered' o 'wide' dependiendo del diseño que prefieras
+    initial_sidebar_state="expanded",  # El sidebar estará expandido por defecto
+)
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -23,18 +30,10 @@ conn = mysql.connector.connect(
     user=db_user,
     password=db_password,
     database=db_name,
-    port=db_port
+    port=db_port,
+    auth_plugin='caching_sha2_password'
 )
 c = conn.cursor()
-
-# Connect to MySQL database
-# conn = mysql.connector.connect(
-#    host="localhost",  
-#    user="root",  
-#    password="123456",  
-#    database="movie_recommendations"
-#)
-#c = conn.cursor()
 
 # Load pre-trained models from pickle files
 with open('model/svd_model.pkl', 'rb') as file:
@@ -106,7 +105,7 @@ if 'logged_in' not in st.session_state:
 
 # If the user is not logged in, show the login/registration form
 if not st.session_state['logged_in']:
-    st.title("Movie Recommendation Based on Your Emotion")
+    st.title("🎬 Feelms - Predicting by Emotion")
 
     # Request the username
     username = st.text_input("Username")
