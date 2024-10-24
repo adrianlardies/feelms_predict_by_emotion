@@ -17,15 +17,11 @@ st.set_page_config(
 # Load environment variables from .env file
 load_dotenv()
 
-# Get database credentials from environment variables
-db_host = os.getenv('DB_HOST')
-db_user = os.getenv('DB_USER')
-db_password = os.getenv('DB_PASSWORD')
-db_name = os.getenv('DB_NAME')
-db_port = os.getenv('DB_PORT')
-
-st.write(f"DB_HOST: {db_host}")
-st.write(f"DB_USER: {db_user}")
+db_host = st.secrets["database"]["DB_HOST"]
+db_user = st.secrets["database"]["DB_USER"]
+db_password = st.secrets["database"]["DB_PASSWORD"]
+db_name = st.secrets["database"]["DB_NAME"]
+db_port = st.secrets["database"]["DB_PORT"]
 
 # Connect to MySQL database using the loaded environment variables
 conn = mysql.connector.connect(
