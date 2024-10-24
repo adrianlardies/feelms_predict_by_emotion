@@ -296,7 +296,7 @@ else:
         st.write(f"You selected: {emotions_dict[selected_emotion]} {selected_emotion}")
 
         # Filter movies based on the selected emotion
-        filtered_movies = df[df['emotions'].apply(lambda x: selected_emotion in x)]
+        filtered_movies = df[df['emotions'].apply(lambda x: selected_emotion in x)].copy()
 
         # Add predicted ratings for each filtered movie
         filtered_movies.loc[:, 'predicted_rating'] = filtered_movies['movie_id'].apply(lambda x: predict_rating(st.session_state['user_id'], x))
