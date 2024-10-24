@@ -2,10 +2,7 @@ import mysql.connector
 import streamlit as st
 import pandas as pd
 import datetime
-import random
 import pickle
-import os
-from dotenv import load_dotenv
 
 st.set_page_config(
     page_title="Feelms - Predicting by Emotion",
@@ -13,9 +10,6 @@ st.set_page_config(
     layout="centered",  # 'centered' o 'wide' dependiendo del diseño que prefieras
     initial_sidebar_state="expanded",  # El sidebar estará expandido por defecto
 )
-
-# Load environment variables from .env file
-load_dotenv()
 
 db_host = st.secrets["database"]["DB_HOST"]
 db_user = st.secrets["database"]["DB_USER"]
