@@ -2,5 +2,6 @@ streamlit
 mysql-connector-python
 pandas
 scikit-surprise
+scikit-learn
 python-dotenv
 numpy<2.0.0
