@@ -50,10 +50,11 @@ def predict_rating(user_id, movie_id):
     except:
         return 5  # Default value if no prediction is available
 
-# Function to predict if a movie will be marked as favorite using RandomForest
 def predict_favorite(features):
+    # Convierte las características a un DataFrame
+    features_df = pd.DataFrame([features], columns=['duration', 'rating'])  # Ajusta los nombres de columna según los utilizados al entrenar el modelo
     # Use the RandomForest model to predict whether the movie will be marked as favorite
-    prediction = rf_model.predict([features])
+    prediction = rf_model.predict(features_df)
     return prediction[0]
 
 # Function to check if the user exists or create a new one
@@ -298,7 +299,7 @@ else:
         filtered_movies = df[df['emotions'].apply(lambda x: selected_emotion in x)]
 
         # Add predicted ratings for each filtered movie
-        filtered_movies['predicted_rating'] = filtered_movies['movie_id'].apply(lambda x: predict_rating(st.session_state['user_id'], x))
+        filtered_movies.loc[:, 'predicted_rating'] = filtered_movies['movie_id'].apply(lambda x: predict_rating(st.session_state['user_id'], x))
 
         # Sort movies by predicted rating
         filtered_movies = filtered_movies.sort_values(by='predicted_rating', ascending=False)
