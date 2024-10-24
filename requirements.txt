@@ -3,4 +3,4 @@ mysql-connector-python
 pandas
 scikit-surprise
 python-dotenv
-numpy>=1.20.0
+numpy<2.0.0
