@@ -22,6 +22,10 @@ db_host = os.getenv('DB_HOST')
 db_user = os.getenv('DB_USER')
 db_password = os.getenv('DB_PASSWORD')
 db_name = os.getenv('DB_NAME')
+db_port = os.getenv('DB_PORT')
+
+st.write(f"DB_HOST: {db_host}")
+st.write(f"DB_USER: {db_user}")
 
 # Connect to MySQL database using the loaded environment variables
 conn = mysql.connector.connect(
@@ -29,7 +33,7 @@ conn = mysql.connector.connect(
     user=db_user,
     password=db_password,
     database=db_name,
-    port= 3306,
+    port=int(db_port),
     auth_plugin='caching_sha2_password'
 )
 c = conn.cursor()
