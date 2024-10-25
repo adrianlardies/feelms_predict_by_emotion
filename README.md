@@ -47,8 +47,9 @@ To run this project locally, follow these steps:
 
 3. Set up the environment variables:
 
-   - Streamlit's secrets manager is used to store sensitive information like the database credentials. Add the following to .streamlit/secrets.toml:
+   Streamlit's secrets manager is used to store sensitive information like the database credentials. Add the following to `.streamlit/secrets.toml`:
 
+   ```toml
    [database]
    DB_HOST = "your-db-host"
    DB_USER = "your-db-user"
