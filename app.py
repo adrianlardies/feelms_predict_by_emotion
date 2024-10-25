@@ -46,7 +46,7 @@ def predict_rating(user_id, movie_id):
 
 def predict_favorite(features):
     # Convierte las características a un DataFrame
-    features_df = pd.DataFrame([features], columns=['duration', 'rating'])  # Ajusta los nombres de columna según los utilizados al entrenar el modelo
+    features_df = pd.DataFrame([features], columns=['duration', 'rating'])
     # Use the RandomForest model to predict whether the movie will be marked as favorite
     prediction = rf_model.predict(features_df)
     return prediction[0]

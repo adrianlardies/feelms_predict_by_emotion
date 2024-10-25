@@ -37,7 +37,6 @@ def train_svd_model(df_user_movie):
     
     # Manually adjust hyperparameters for SVD
     svd_model = SVD(n_factors=100, lr_all=0.005, reg_bi=0.1, reg_bu=0.1)  # Customize hyperparameters
-    # svd_model = SVD(n_factors=100, n_epochs=50)  # You can uncomment this to test n_epochs
 
     # Cross-validation to evaluate the model
     results = cross_validate(svd_model, data, measures=['RMSE', 'MAE'], cv=5, verbose=True)
