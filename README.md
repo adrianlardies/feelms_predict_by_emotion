@@ -140,3 +140,11 @@ Once the app is running:
 - Incorporate additional machine learning models to improve recommendation accuracy.
 - Extend functionality to include TV series and documentaries.
 - Implement user-based filtering to improve collaboration between users with similar preferences.
+
+## 🔑 Explore the Project
+
+Experience **Feelms** in action and review our project presentation for a detailed overview of the development process, insights, and results:
+
+- [**Feelms Streamlit Application**](https://feelms.streamlit.app/): Try the app, select your mood, and receive personalized movie recommendations.
+- [**Project Presentation**](https://www.canva.com/design/DAGUfABI-YI/m9NWZio2Z34oymjTY12sng/edit?utm_content=DAGUfABI-YI&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton): Dive into the project’s details, from data processing to model performance and future improvements.
+
