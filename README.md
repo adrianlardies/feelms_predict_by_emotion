@@ -14,7 +14,7 @@ Welcome to **Feelms**, a movie recommendation app that suggests films based on y
 
 ## 🔬 How It Works
 
-### ✅ 1. Data Processing
+### 1. Data Processing ✅
 
 - **Movie Dataset (`imdb.csv`)**: The original dataset from Kaggle contains basic information such as title, director, cast, genres, and poster images. This data was processed in the notebook `imdb.ipynb` to produce two key outputs:
   - **`imdb_clean.csv`**: A refined version of the movie dataset with enhanced, ready-for-model features, including an additional emotion-based column.
@@ -26,7 +26,7 @@ Welcome to **Feelms**, a movie recommendation app that suggests films based on y
   - **Favorites** (`favorites.csv`): Generated from a subset (30%) of viewed movies that were marked as favorites, with favorite dates occurring after the original view date.
   - **Ratings** (`ratings.csv`): Assigned ratings to 50% of favorites, with ratings influenced by the associated emotion, reflecting a realistic distribution of user preferences.
    
-### 🧠 2. Machine Learning Models
+### 2. Machine Learning Models 🧠
 
 #### **SVD (Singular Value Decomposition)**
 
@@ -38,13 +38,13 @@ Welcome to **Feelms**, a movie recommendation app that suggests films based on y
 - The Random Forest model predicts whether a movie will become a favorite based on features such as duration and rating. The model was optimized for accuracy, precision, and recall using cross-validation and hyperparameter tuning (e.g., `max_depth = 15`).
 - The model integrates into Streamlit as a predictive tool to suggest movies that users are likely to favor.
 
-### 🌐 3. AWS Integration
+### 3. AWS Integration 🌐
 
 - **RDS (Relational Database Service)**: A MySQL database on Amazon RDS stores user interactions, favorites, and ratings.
 - **EC2 (Elastic Compute Cloud)**: The app is hosted on an EC2 instance, providing a scalable and high-availability environment for the app.
 - **Environment Variables**: Sensitive information like database credentials is stored securely in Streamlit's `secrets.toml` file.
 
-### 🚀 4. Streamlit Application
+### 4. Streamlit Application 🚀
 
 The web app uses Streamlit for real-time interaction, displaying movie recommendations, ratings, and favorites through an intuitive UI. Pre-trained model files (`rf_model.pkl`, `svd_model.pkl`) are integrated directly into the Streamlit app for immediate use.
 
@@ -111,19 +111,27 @@ Once the app is running:
 
 - **Emotion Weights**: Positive emotions (e.g., Happy, Excited) were assigned higher weights in the generated interactions, increasing their frequency in recommendations to reflect user preferences for uplifting content.
 
-  ![Emotion Distribution](./images/emotion_distribution.png)
+<div align="center">
+  <img src="./images/emotion_distribution.png" alt="Emotion Distribution" width="600"/>
+</div>
 
 - **Active vs. Casual Users**: About 20% of users are classified as active and engage with the platform frequently, while the other 80% are casual users, simulating real-world application usage patterns.
 
-  ![User Activity](./images/user_activity.png)
+<div align="center">
+  <img src="./images/user_activity.png" alt="User Activity" width="600"/>
+</div>
 
 - **Favorites and Ratings**: Only about 30% of movies viewed are marked as favorites, and ratings are applied to 50% of those favorites. This setup models selective engagement, where users may choose to rate only the most impactful movies.
 
-  ![Favorites and Ratings](./images/favorites_ratings_distribution.png)
+<div align="center">
+  <img src="./images/favorites_ratings_distribution.png" alt="Favorites and Ratings" width="600"/>
+</div>
 
 - **Interaction Dates**: Dates of interactions are randomly distributed within the last year, generating realistic activity trends over time.
 
-  ![Interaction Dates](./images/interaction_dates.png)
+<div align="center">
+  <img src="./images/interaction_dates.png" alt="Interaction Dates" width="600"/>
+</div>
 
 - **Validation through EDA**: Exploratory Data Analysis was performed on both the initial movie dataset and the generated interaction data to ensure data quality, consistency, and appropriate distribution for modeling.
 
